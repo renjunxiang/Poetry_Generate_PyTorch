@@ -15,6 +15,7 @@
 * **预处理**：ProcessData.py，用于合并、清洗每个txt文档，文本转编码、填充切片<br>
 * **网络**：在文件夹net中，rnn.py、dataset.py分别是2层lstm的网络和pytorch的dataset读取方式（不太习惯数据读取还要单独写一个方法）<br>
 * **训练**：train.py，训练网络<br>
+* **模型**：model文件夹，保存训练的模型<br>
 * **生成**：test.py，生成诗歌<br>
 
 ## **成果展示**
