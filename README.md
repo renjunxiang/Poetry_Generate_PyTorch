@@ -20,3 +20,4 @@
 
 ## **成果展示**
 ![](https://github.com/renjunxiang/Poetry_Generate_PyTorch/blob/master/picture/demo.png)<br>
+![](https://github.com/renjunxiang/Poetry_Generate_PyTorch/blob/master/picture/demo2.png)<br>
