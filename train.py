@@ -1,24 +1,36 @@
 import os
 import pickle
 from ProcessData import ProcessData
-from net import Mynet, MyDataset
+from net import NET_RNN, NET_BERT, NET_BERT_RNN, DatasetRNN, DatasetBERT
 import torch
 from torch import nn
-import torch.optim as optim
+from torch import optim
 from torch.utils.data import Dataset
+from flair.embeddings import BertEmbeddings
+import config
 
 # 超参数设置
-EPOCH = 5
-BATCH_SIZE = 64
-LR = 0.01
+EPOCH = config.EPOCH
+BATCH_SIZE = config.BATCH_SIZE
+LR = config.LR
+
+# 其他设置
+POOLING = config.POOLING
+BERT_LAYERS = config.BERT_LAYERS
+EMBEDDING = config.EMBEDDING
+LOG_BATCH_NUM = config.LOG_BATCH_NUM
 
 # 定义是否使用GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def train():
+def train(method='RNN'):
+    if method not in ['RNN', 'BERT', 'BERT_RNN']:
+        raise ValueError("method should be 'RNN','BERT' or 'BERT_RNN'")
     DIR = os.path.dirname(os.path.abspath(__file__))
     if os.path.exists('%s/data/x_seq.pkl' % DIR):
+        with open('%s/data/Tang_Poetry.pkl' % DIR, 'rb') as f:
+            texts = pickle.load(f)
         with open('%s/data/x_seq.pkl' % DIR, 'rb') as f:
             x_seq = pickle.load(f)
         with open('%s/data/y_seq.pkl' % DIR, 'rb') as f:
@@ -37,21 +49,38 @@ def train():
         with open('%s/data/tokenizer.pkl' % DIR, 'wb') as f:
             pickle.dump(data_process['tokenizer'], f)
 
-    # 定义训练批处理数据
-    trainloader = torch.utils.data.DataLoader(
-        dataset=MyDataset(x_seq[:50000], y_seq[:50000]),
-        batch_size=BATCH_SIZE,
-        shuffle=True
-    )
+    if method == 'RNN':
+        # 定义训练批处理数据
+        trainloader = torch.utils.data.DataLoader(
+            dataset=DatasetRNN(x_seq[:-1000], y_seq[:-1000]),
+            batch_size=BATCH_SIZE, shuffle=True)
 
-    testloader = torch.utils.data.DataLoader(
-        dataset=MyDataset(x_seq[-1000:], y_seq[-1000:]),
-        batch_size=BATCH_SIZE,
-        shuffle=True
-    )
+        testloader = torch.utils.data.DataLoader(
+            dataset=DatasetRNN(x_seq[-1000:], y_seq[-1000:]),
+            batch_size=BATCH_SIZE, shuffle=True)
+        Net = NET_RNN
+    else:
+        processdata = ProcessData()
+        texts = processdata.reshape_seqs(texts, maxlen=40, data_type='str')[:, :-1]
+        embedding = BertEmbeddings(bert_model=EMBEDDING,
+                                   pooling_operation=POOLING,
+                                   layers=BERT_LAYERS)
+
+        print('finish loading BERT')
+
+        trainloader = torch.utils.data.DataLoader(
+            dataset=DatasetBERT(texts[:-1000], y_seq[:-1000], embedding),
+            batch_size=BATCH_SIZE, shuffle=True)
+        testloader = torch.utils.data.DataLoader(
+            dataset=DatasetBERT(texts[-1000:], y_seq[-1000:], embedding),
+            batch_size=BATCH_SIZE, shuffle=True)
+        if method == 'BERT':
+            Net = NET_BERT
+        else:
+            Net = NET_BERT_RNN
 
     # 定义损失函数loss function和优化方式
-    net = Mynet().to(device)
+    net = Net().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters(), lr=LR)
 
@@ -72,12 +101,13 @@ def train():
             loss.backward()
             optimizer.step()
 
-            # 每训练100个batch打印一次平均loss
+            # 每训练LOG_BATCH_NUM个batch打印一次平均loss
             sum_loss += loss.item()
-            if i % 100 == 99:
+            if i % LOG_BATCH_NUM == LOG_BATCH_NUM - 1:
                 print('[%d, %d] loss: %.03f'
-                      % (epoch + 1, i + 1, sum_loss / 100))
+                      % (epoch + 1, i + 1, sum_loss / LOG_BATCH_NUM))
                 sum_loss = 0.0
+
         # 每跑完一次epoch测试一下准确率
         with torch.no_grad():
             correct = 0
@@ -91,8 +121,10 @@ def train():
                 total += y_seq_batch.size(0)
                 correct += (predicted == y_seq_batch).sum()
             print('第%d个epoch的识别准确率为：%d%%' % (epoch + 1, (100 * correct / total)))
-        torch.save(net.state_dict(), '%s/net_%03d.pth' % ('./model', epoch + 1))
+        torch.save(net.state_dict(), '%s/%s_%03d.pth' % ('./model', method, epoch + 1))
 
 
 if __name__ == '__main__':
-    train()
+    # train(method='RNN')
+    # train(method='BERT')
+    train(method='BERT_RNN')

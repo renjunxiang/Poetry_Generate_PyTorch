@@ -1,5 +1,6 @@
 from keras.preprocessing.text import Tokenizer
 import numpy as np
+import re
 import os
 import pickle
 from creat_data import creat_data
@@ -30,9 +31,31 @@ class ProcessData():
 
         return texts
 
+    def reshape_seqs(self, seqs, maxlen=40, data_type='list'):
+        seqs_new = []
+        if data_type != 'list':
+            for num, seq in enumerate(seqs):
+                mod = len(seq) % maxlen
+                seq += ('e' * (maxlen - mod))
+                # seq = seq[:(len(seq) - mod)]
+                seqs_new += re.findall('\S', seq)
+                if (num + 1) % 10000 == 0:
+                    print(num + 1)
+        else:
+            for num, seq in enumerate(seqs):
+                mod = len(seq) % maxlen
+                seq += ([0] * (maxlen - mod))
+                seqs_new += seq
+                if (num + 1) % 10000 == 0:
+                    print(num + 1)
+        print('Finish reshape')
+        seqs_new = np.array(seqs_new).reshape([-1, maxlen])
+
+        return seqs_new
+
     def text2seq(self, texts=None, num_words=None, maxlen=40):
         """
-        maxlen=40时，合计69867样本数
+        maxlen=40时,合计69867样本数,6629个字
         :param texts: 诗歌文本
         :param num_words: 保留字数量
         :param maxlen: 样本句子长度
@@ -46,21 +69,8 @@ class ProcessData():
         # 转编码
         texts_seq = tokenizer.texts_to_sequences(texts=texts)
         print('Finish texts_to_sequences')
+        texts_seq = self.reshape_seqs(texts_seq, maxlen=maxlen)
 
-        texts_new = []
-        for num, text_seq in enumerate(texts_seq):
-            mod = len(text_seq) % maxlen
-            text_seq += ([0] * (maxlen - mod))
-            # text_seq = np.array(text_seq).reshape([-1, maxlen]).flatten().tolist()
-            texts_new += text_seq
-            if (num + 1) % 1000 == 0:
-                print(num + 1)
-        print('Finish reshape')
-
-        texts_seq = np.array(texts_new).reshape([-1, maxlen])
-        # self.texts_seq = texts_seq
-        # self.x_seq = texts_seq[:, :-1]
-        # self.y_seq = texts_seq[:, 1:]
         data_process = {'tokenizer': tokenizer,
                         'x_seq': texts_seq[:, :-1],
                         'y_seq': texts_seq[:, 1:]}
