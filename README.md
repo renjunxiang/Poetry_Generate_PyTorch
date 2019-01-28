@@ -19,9 +19,9 @@
 * **生成唐诗**：test.py，'RNN', 'BERT', 'BERT_RNN'三种方式，生成诗歌<br>
 
 ## **其他说明**
-按照传统的Embedding+LSTM+Softmax，效果还可以。<br>
-BERT是通过flair模块调用的，训练过程因为会逐个计算BERT输出，速度非常慢，内存足够的话建议先批量转为[样本数, 句子长度, BERT输出维度]的tensor。<br>
-使用BERT发现效果非常差，学不到唐诗的结构。原因猜测是训练和推断都是从左向右，应当采用Transformer中Decoder部分的下三角矩阵Multi-headed attention，而BERT采用的是Transformer中Encoder部分，是基于全文的Multi-headed attention。在推断过程中，由于不知道未生成部分的文本，字向量的表达是不准确的且持续变化。flair官方推荐的是用BERT后四层输出拼接成[batchsize, len, 786*4]的方式，实际使用发现只用最后一层的效果略好。
+* 按照传统的Embedding+LSTM+Softmax，效果还可以。<br>
+* BERT是通过flair模块调用的，训练过程因为会逐个计算BERT输出，速度非常慢，内存足够的话建议先批量转为[样本数, 句子长度, BERT输出维度]的tensor。<br>
+* 使用BERT发现效果非常差，学不到唐诗的结构。原因猜测是训练和推断都是从左向右，应当采用Transformer中Decoder部分的下三角矩阵Multi-headed attention，而BERT采用的是Transformer中Encoder部分，是基于全文的Multi-headed attention。在推断过程中，由于不知道未生成部分的文本，字向量的表达是不准确的且持续变化。flair官方推荐的是用BERT后四层输出拼接成[batchsize, len, 786*4]的方式，实际使用发现只用最后一层的效果略好。
 
 ## **成果展示**
 ![](https://github.com/renjunxiang/Poetry_Generate_PyTorch/blob/master/picture/demo.png)<br>
