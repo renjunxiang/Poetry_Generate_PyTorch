@@ -8,10 +8,9 @@ from torch import optim
 from torch.utils.data import Dataset
 from flair.embeddings import BertEmbeddings
 import config
+import argparse
 
 # 超参数设置
-EPOCH = config.EPOCH
-BATCH_SIZE = config.BATCH_SIZE
 LR = config.LR
 
 # 其他设置
@@ -19,6 +18,12 @@ POOLING = config.POOLING
 BERT_LAYERS = config.BERT_LAYERS
 EMBEDDING = config.EMBEDDING
 LOG_BATCH_NUM = config.LOG_BATCH_NUM
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--method', default='RNN', help='default method is RNN')
+parser.add_argument('--epoch', default=config.EPOCH, help='default epoch is 5')
+parser.add_argument('--batchsize', default=config.BATCH_SIZE, help='default batchsize is 64')
+opt = parser.parse_args()
 
 # 定义是否使用GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,16 +58,16 @@ def train(method='RNN'):
         # 定义训练批处理数据
         trainloader = torch.utils.data.DataLoader(
             dataset=DatasetRNN(x_seq[:-1000], y_seq[:-1000]),
-            batch_size=BATCH_SIZE, shuffle=True)
+            batch_size=opt.batchsize, shuffle=True)
 
         testloader = torch.utils.data.DataLoader(
             dataset=DatasetRNN(x_seq[-1000:], y_seq[-1000:]),
-            batch_size=BATCH_SIZE, shuffle=True)
+            batch_size=opt.batchsize, shuffle=True)
         Net = NET_RNN
     else:
         processdata = ProcessData()
         texts = processdata.reshape_seqs(texts, maxlen=40, data_type='str')[:, :-1]
-        embedding = BertEmbeddings(bert_model=EMBEDDING,
+        embedding = BertEmbeddings(bert_model_or_path=EMBEDDING,
                                    pooling_operation=POOLING,
                                    layers=BERT_LAYERS)
 
@@ -70,10 +75,10 @@ def train(method='RNN'):
 
         trainloader = torch.utils.data.DataLoader(
             dataset=DatasetBERT(texts[:-1000], y_seq[:-1000], embedding),
-            batch_size=BATCH_SIZE, shuffle=True)
+            batch_size=opt.batchsize, shuffle=True)
         testloader = torch.utils.data.DataLoader(
             dataset=DatasetBERT(texts[-1000:], y_seq[-1000:], embedding),
-            batch_size=BATCH_SIZE, shuffle=True)
+            batch_size=opt.batchsize, shuffle=True)
         if method == 'BERT':
             Net = NET_BERT
         else:
@@ -84,7 +89,7 @@ def train(method='RNN'):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters(), lr=LR)
 
-    for epoch in range(EPOCH):
+    for epoch in range(opt.epoch):
         sum_loss = 0.0
         # 数据读取
         for i, data in enumerate(trainloader):
@@ -125,6 +130,4 @@ def train(method='RNN'):
 
 
 if __name__ == '__main__':
-    # train(method='RNN')
-    # train(method='BERT')
-    train(method='BERT_RNN')
+    train(method='BERT')

@@ -8,13 +8,13 @@ import numpy as np
 from flair.data import Sentence
 from flair.embeddings import BertEmbeddings
 import config
+import argparse
 
 # 定义是否使用GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 配置变量
 dir_tokenizer = './data/tokenizer.pkl'
-maxlen = 96
 
 # 其他设置
 POOLING = config.POOLING
@@ -24,6 +24,10 @@ MODEL_PATH_RNN = config.MODEL_PATH_RNN
 MODEL_PATH_BERT = config.MODEL_PATH_BERT
 MODEL_PATH_BERT_RNN = config.MODEL_PATH_BERT_RNN
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--method', default='RNN', help='default method is RNN')
+parser.add_argument('--maxlen', default=96, help='default maxlen is 96')
+opt = parser.parse_args()
 
 def test(method='RNN'):
     if method not in ['RNN', 'BERT', 'BERT_RNN']:
@@ -44,7 +48,7 @@ def test(method='RNN'):
             net = NET_BERT_RNN().to(device)
             checkpoint = torch.load(MODEL_PATH_BERT_RNN)
         net.load_state_dict(checkpoint)
-        embedding = BertEmbeddings(bert_model=EMBEDDING,
+        embedding = BertEmbeddings(bert_model_or_path=EMBEDDING,
                                    pooling_operation=POOLING,
                                    layers=BERT_LAYERS)
     while True:
@@ -67,7 +71,7 @@ def test(method='RNN'):
                     text += tokenizer.index_word[predicted]
                 else:
                     break
-                if len(text) >= maxlen:
+                if len(text) >= opt.maxlen:
                     break
         else:
             while True:
@@ -84,7 +88,7 @@ def test(method='RNN'):
                     text += tokenizer.index_word[predicted]
                 else:
                     break
-                if len(text) >= maxlen:
+                if len(text) >= opt.maxlen:
                     break
         text_list = re.findall(pattern='[^。？！]*[。？！]', string=text)
         print('创作完成：\n')
@@ -94,6 +98,4 @@ def test(method='RNN'):
 
 
 if __name__ == '__main__':
-    # test(method='RNN')
-    # test(method='BERT')
-    test(method='BERT_RNN')
+    test(method=opt.method)
